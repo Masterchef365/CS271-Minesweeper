@@ -16,7 +16,7 @@ const char FLAG_CHAR = 'F';
 const char CLEAR_CHAR = ' ';
 const char MINE_CHAR = '*';
 
-const int PERCENT_MINES = 15;
+const int PERCENT_MINES = 8;
 
 // Number of mines in the vicinity, 9 = mine here
 unsigned char field[WIDTH * HEIGHT] = {0}; 
@@ -24,19 +24,19 @@ unsigned char field[WIDTH * HEIGHT] = {0};
 // 0 = undiscovered, 1 = cleared, 2 = flagged
 unsigned char interactive[WIDTH * HEIGHT] = {0}; 
 
-unsigned int rng = 8; // Is also the seed
+unsigned int rng = 15; // Is also the seed
 
 void print_field() {
     printf("---------------------------------------------\n");
 
-    printf(" ");
+    printf("  ");
     for (int x = 0; x < WIDTH; x++) {
         printf(" %X", x);
     }
     putchar('\n');
 
     for (int y = 0; y < HEIGHT; y++) {
-        printf("%X", y);
+        printf("%2X", y);
         for (int x = 0; x < WIDTH; x++) {
             unsigned char field_val = field[y * WIDTH + x];
             unsigned char inter_val = interactive[y * WIDTH + x];
@@ -113,9 +113,15 @@ void recursive_clear(int x, int y) {
         int position = y_m * WIDTH + x_m;
         if (bounds_check(x_m, y_m) && field[position] != FIELD_MINE) {
             if (interactive[position] == INTER_UNDISCOVERED) {
+                interactive[position] = INTER_FLAGGED;
+                print_field();
+                usleep(1000 * 10);
                 interactive[position] = INTER_DISCOVERED;
-                // if (field[position] == FIELD_CLEAR) // Clear only up to FIELD_CLEAR
+                if (field[position] == FIELD_CLEAR) {
                     recursive_clear(x_m, y_m);
+                }
+                //} else {
+                //}
             }
         }
     }
@@ -125,7 +131,7 @@ int main () {
     print_field();
     generate_map();
     //for (int i = 0; i < WIDTH * HEIGHT; i++)
-        //interactive[i] = INTER_DISCOVERED;
+    //interactive[i] = INTER_DISCOVERED;
 
     recursive_clear(1, 1);
     print_field();
