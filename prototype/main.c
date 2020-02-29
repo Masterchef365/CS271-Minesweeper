@@ -3,7 +3,6 @@
 
 #define WIDTH 16
 #define HEIGHT 16
-#define BOARD_LEN WIDTH *HEIGHT
 const unsigned char INTER_UNDISCOVERED = 0;
 const unsigned char INTER_DISCOVERED = 1;
 const unsigned char INTER_FLAGGED = 2;
@@ -74,7 +73,7 @@ void print_field() {
 }
 
 // https://stackoverflow.com/questions/3062746/special-simple-random-number-generator#3062783
-void advance_rng() { rng = (1103515245 * rng + 12345) % 2147483648; }
+void advance_rng() { rng = (1103515245 * rng + 12345); }
 
 // Can be optimized to [y * WIDTH + x >= 0 && < WIDTH * HEIGHT
 int bounds_check(int x, int y) {
