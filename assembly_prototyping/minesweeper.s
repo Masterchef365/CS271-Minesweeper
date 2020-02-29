@@ -1,8 +1,5 @@
 %include 'Along32.inc'
 
-; Note that this is NOT MASM code, nor does it use the 
-; Ievine libraries. It's just a test bed for concepts.
-
 extern exit
 
 global main

@@ -3,7 +3,7 @@
 
 #define WIDTH 16
 #define HEIGHT 16
-#define BOARD_LEN WIDTH * HEIGHT
+#define BOARD_LEN WIDTH *HEIGHT
 const unsigned char INTER_UNDISCOVERED = 0;
 const unsigned char INTER_DISCOVERED = 1;
 const unsigned char INTER_FLAGGED = 2;
@@ -18,11 +18,19 @@ const char MINE_CHAR = '*';
 
 const int PERCENT_MINES = 8;
 
+const int FULL_AREA_KERNEL_X[] = {-1, 0, 1, -1, 1, -1, 0, 1};
+const int FULL_AREA_KERNEL_Y[] = {-1, -1, -1, 0, 0, 1, 1, 1};
+const int FULL_AREA_KERNEL_LEN = 8;
+
+const int ADJACENT_KERNEL_X[] = {-1, 0, 0, 1};
+const int ADJACENT_KERNEL_Y[] = {0, -1, 1, 0};
+const int ADJACENT_KERNEL_LEN = 4;
+
 // Number of mines in the vicinity, 9 = mine here
-unsigned char field[WIDTH * HEIGHT] = {0}; 
+unsigned char field[WIDTH * HEIGHT] = {0};
 
 // 0 = undiscovered, 1 = cleared, 2 = flagged
-unsigned char interactive[WIDTH * HEIGHT] = {0}; 
+unsigned char interactive[WIDTH * HEIGHT] = {0};
 
 unsigned int rng = 15; // Is also the seed
 
@@ -58,16 +66,13 @@ void print_field() {
             } else {
                 putchar(MINE_CHAR);
             }
-
         }
         putchar('\n');
     }
 }
 
 // https://stackoverflow.com/questions/3062746/special-simple-random-number-generator#3062783
-void advance_rng() {
-    rng = (1103515245 * rng + 12345) % 2147483648;
-}
+void advance_rng() { rng = (1103515245 * rng + 12345) % 2147483648; }
 
 // Can be optimized to [y * WIDTH + x >= 0 && < WIDTH * HEIGHT
 int bounds_check(int x, int y) {
@@ -75,16 +80,12 @@ int bounds_check(int x, int y) {
 }
 
 void inc_number_at_xy(int x, int y) {
-    for (int x_offset = -1; x_offset <= 1; x_offset++) {
-        for (int y_offset = -1; y_offset <= 1; y_offset++) {
-            if (!(x_offset == 0 && y_offset == 0)) {
-                int x_m = x + x_offset;
-                int y_m = y + y_offset;
-                int position = y_m * WIDTH + x_m;
-                if (bounds_check(x_m, y_m) && field[position] != FIELD_MINE) {
-                    field[position] += 1;
-                }
-            }
+    for (int i = 0; i < FULL_AREA_KERNEL_LEN; i++) {
+        int x_m = x + FULL_AREA_KERNEL_X[i];
+        int y_m = y + FULL_AREA_KERNEL_Y[i];
+        int position = y_m * WIDTH + x_m;
+        if (bounds_check(x_m, y_m) && field[position] != FIELD_MINE) {
+            field[position] += 1;
         }
     }
 }
@@ -105,33 +106,26 @@ void generate_map() {
 void recursive_clear(int x, int y) {
     interactive[y * WIDTH + x] = INTER_DISCOVERED;
 
-    int x_offsets[] = {-1, 0, 0, 1};
-    int y_offsets[] = {0, -1, 1, 0};
-    for (int i = 0; i < 4; i++) {
-        int x_m = x + x_offsets[i];
-        int y_m = y + y_offsets[i];
+    for (int i = 0; i < ADJACENT_KERNEL_LEN; i++) {
+        int x_m = x + ADJACENT_KERNEL_X[i];
+        int y_m = y + ADJACENT_KERNEL_Y[i];
         int position = y_m * WIDTH + x_m;
         if (bounds_check(x_m, y_m) && field[position] != FIELD_MINE) {
             if (interactive[position] == INTER_UNDISCOVERED) {
-                interactive[position] = INTER_FLAGGED;
-                print_field();
-                usleep(1000 * 10);
                 interactive[position] = INTER_DISCOVERED;
                 if (field[position] == FIELD_CLEAR) {
                     recursive_clear(x_m, y_m);
                 }
-                //} else {
-                //}
             }
         }
     }
 }
 
-int main () {
+int main() {
     print_field();
     generate_map();
-    //for (int i = 0; i < WIDTH * HEIGHT; i++)
-    //interactive[i] = INTER_DISCOVERED;
+    // for (int i = 0; i < WIDTH * HEIGHT; i++)
+    // interactive[i] = INTER_DISCOVERED;
 
     recursive_clear(1, 1);
     print_field();
