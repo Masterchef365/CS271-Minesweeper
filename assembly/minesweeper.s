@@ -41,10 +41,10 @@ global main
 ; Internal variables
 section .data
     rng dd 15
-    FULL_AREA_KERNEL_X dd -1, 0, 1, -1, 1, -1, 0, 1
-    FULL_AREA_KERNEL_Y dd -1, -1, -1, 0, 0, 1, 1, 1
-    ADJACENT_KERNEL_X dd -1, 0, 0, 1
-    ADJACENT_KERNEL_Y dd 0, -1, 1, 0
+    full_area_kernel_x dd -1, 0, 1, -1, 1, -1, 0, 1
+    full_area_kernel_y dd -1, -1, -1, 0, 0, 1, 1, 1
+    adjacent_kernel_x dd -1, 0, 0, 1
+    adjacent_kernel_y dd 0, -1, 1, 0
 
 section .bss
     field resb (WIDTH * HEIGHT)
@@ -66,8 +66,24 @@ advance_rng:
     mov [rng], eax
     ret
 
+; x = ebx, y = ecx
+; Set EFLAGS so that jl jumps any of the following are unsatisfied
+;   x >= 0 && y >= 0 && WIDTH - 1 >= x && HEIGHT - 1 >= y;
+; Clobbers: eax
+bounds_check:
+    cmp ebx, 0
+    jl bounds_check_break  
+    cmp ecx, 0
+    jl bounds_check_break  
+    mov eax, WIDTH - 1
+    cmp eax, ebx
+    jl bounds_check_break  
+    mov eax, HEIGHT - 1
+    cmp eax, ecx
+    bounds_check_break:
+    ret
 
-; Clobbers: ebx, ecx, eax
+; Clobbers: eax, edi
 place_mine_at_xy:
     ; eax = (ecx * WIDTH) + ebx
     mov eax, WIDTH
@@ -75,8 +91,50 @@ place_mine_at_xy:
     add eax, ebx
 
     ; field[eax] = FIELD_MINE
-    mov bl, FIELD_MINE
-    mov [field + eax], bl
+    mov dl, FIELD_MINE
+    mov [field + eax], dl
+
+    mov edi, 0 ; Loop counter for full_area_kernel_{x, y}
+    pm_area_loop:
+        ; We're about to clobber these two, save 'em
+        push ebx
+        push ecx
+
+        ; ebx += full_area_kernel_x[edi]
+        add ebx, [full_area_kernel_x + edi]
+
+        ; ecx += full_area_kernel_y[edi]
+        add ecx, [full_area_kernel_y + edi]
+
+        ; if (!bounds_check(ebx, ecx)) continue 
+        call bounds_check
+        jl pm_area_loop_continue
+
+        ; eax = ecx * WIDTH + ebx
+        mov eax, WIDTH
+        mul ecx
+        add eax, ebx
+
+        ; dl = field[eax]
+        mov dl, [field + eax]
+
+        ; if (dl == FIELD_MINE) continue
+        cmp dl, FIELD_MINE
+        je pm_area_loop_continue
+
+        ; dl += 1
+        add dl, 1
+
+        ; field[eax] = dl
+        mov [field + eax], dl
+
+        pm_area_loop_continue:
+        pop ecx
+        pop ebx
+
+     add edi, 1
+     cmp edi, FULL_AREA_KERNEL_LEN
+     jle pm_area_loop
 
     ret
 
@@ -112,6 +170,7 @@ generate_map:
             jge gm_clear
 
             ; else, place a mine at (ebx, ecx)
+            ; TODO: Comment out these push/pop, they're not needed!
             push ebx
             push ecx
             call place_mine_at_xy
