@@ -153,11 +153,8 @@ print_map:
             mov eax, ' '
             call WriteChar
             
-            ; *esi = 1
-            mov eax, 0
-            mov al, [esi]
-
             ; Write [esi]
+            mov al, [esi]
             call WriteDec
 
         ; if (++x > WIDTH) break;
