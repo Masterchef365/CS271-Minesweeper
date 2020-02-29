@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define WIDTH 6
-#define HEIGHT 6
+#define WIDTH 16
+#define HEIGHT 16
 #define BOARD_LEN WIDTH *HEIGHT
 const unsigned char INTER_UNDISCOVERED = 0;
 const unsigned char INTER_DISCOVERED = 1;
@@ -131,16 +131,16 @@ void toggle_flag(int x, int y) {
     if (interactive[position] == INTER_UNDISCOVERED) {
         interactive[position] = INTER_FLAGGED;
         if (field[position] == FIELD_MINE) {
-            correctly_flagged_mines += 1;  
+            correctly_flagged_mines += 1;
         } else {
-            correctly_flagged_mines -= 1;  
+            correctly_flagged_mines -= 1;
         }
     } else {
         interactive[position] = INTER_UNDISCOVERED;
         if (field[position] == FIELD_MINE) {
-            correctly_flagged_mines -= 1;  
+            correctly_flagged_mines -= 1;
         } else {
-            correctly_flagged_mines += 1;  
+            correctly_flagged_mines += 1;
         }
     }
 }
@@ -163,12 +163,10 @@ int main() {
         // Read command
         int command;
         do {
-            printf(
-                    "What operation would you like to execute?\n"
+            printf("What operation would you like to execute?\n"
                     "0 = Clear\n"
                     "1 = Toggle flag\n"
-                    "Operation: "
-                  );
+                    "Operation: ");
             scanf("%i", &command);
         } while (command > 1);
 
