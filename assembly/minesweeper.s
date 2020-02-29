@@ -35,7 +35,6 @@ global main
 
 ; Internal variables
 section .data
-    greeting db "Greetings, Duncan", 0x00 
     rng dd 15
 
 section .bss
@@ -58,6 +57,7 @@ advance_rng:
     mov [rng], eax
     ret
 
+
 ; Clobbers: ebx, ecx, eax
 place_mine_at_xy:
     ; eax = (ecx * WIDTH) + ebx
@@ -72,6 +72,7 @@ place_mine_at_xy:
     mov al, FIELD_MINE
     mov [esi], al
     ret
+
 
 ; Generates a new map
 ; Clobbers: Everything tbh
@@ -110,15 +111,6 @@ generate_map:
             call place_mine_at_xy
             pop ecx
             pop ebx
-
-            ; Print "x, y"
-            ;mov eax, ebx
-            ;call WriteDec
-            ;mov eax, 0x20
-            ;call WriteChar
-            ;mov eax, ecx
-            ;call WriteDec
-            ;call Crlf
             
             gm_clear:
 
@@ -132,6 +124,7 @@ generate_map:
     cmp ecx, HEIGHT
     jl gm_y_loop
     ret
+
 
 print_map:
     ; Loop through all coordinates, populating it with mines
@@ -172,23 +165,9 @@ print_map:
 
     
 main:
-    ; Align the stack pointer before C calls. THIS IS NECESSARY.
-    ;mov ecx, 80
-    ;mov ebx, 31
-    ;lomp:
-    ;    ; eax = rng % ebx
-    ;    mov eax, [rng]
-    ;    mov edx, 0
-    ;    div ebx
-    ;    mov eax, edx
-
-    ;    call WriteDec
-    ;    call Crlf
-    ;    call advance_rng
-    ;    loop lomp
-    ;call Crlf
     call generate_map
     call print_map
+
 
 stop:
     ; Exit with EXIT_SUCCESS
