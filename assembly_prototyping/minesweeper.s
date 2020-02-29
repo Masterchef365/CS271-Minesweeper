@@ -16,17 +16,22 @@ global main
     ; Width and height of the map
     WIDTH equ 16
     HEIGHT equ 16
-    PERCENT_MINES equ 80
+    PERCENT_MINES equ 10
 
 ; Internal constants
     ; Field map codes
     FIELD_CLEAR equ 0
     FIELD_MINE equ 9
-    
+
     ; Interactive map codes
     INTER_UNDISCOVERED equ 0
     INTER_DISCOVERED equ 1
     INTER_FLAGGED equ 2
+
+    UNDISCOVERED_CHAR equ '-'
+    FLAG_CHAR equ 'F'
+    CLEAR_CHAR equ ' '
+    MINE_CHAR equ '*'
 
 ; Internal variables
 section .data
@@ -64,7 +69,7 @@ place_mine_at_xy:
     lea esi, [field + eax]
     
     ; *esi = 1
-    mov al, 1
+    mov al, FIELD_MINE
     mov [esi], al
     ret
 
@@ -96,7 +101,7 @@ generate_map:
 
             ; if (edx >= PERCENT_MINES) jmp gm_clear
             mov esi, PERCENT_MINES
-            cmp esi, edx
+            cmp edx, esi
             jge gm_clear
 
             ; else, place a mine at (ebx, ecx)
@@ -143,10 +148,17 @@ print_map:
             
             ; esi = &field[eax]
             lea esi, [field + eax]
+
+            ; Write a space
+            mov eax, ' '
+            call WriteChar
             
             ; *esi = 1
-            mov al, 1
-            mov [esi], al
+            mov eax, 0
+            mov al, [esi]
+
+            ; Write [esi]
+            call WriteDec
 
         ; if (++x > WIDTH) break;
         add ebx, 1
