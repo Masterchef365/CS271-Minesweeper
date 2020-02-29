@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
 
-#define WIDTH 16
-#define HEIGHT 16
+#define WIDTH 6
+#define HEIGHT 6
 #define BOARD_LEN WIDTH *HEIGHT
 const unsigned char INTER_UNDISCOVERED = 0;
 const unsigned char INTER_DISCOVERED = 1;
@@ -28,6 +28,8 @@ const int ADJACENT_KERNEL_LEN = 4;
 
 // Number of mines in the vicinity, 9 = mine here
 unsigned char field[WIDTH * HEIGHT] = {0};
+unsigned int n_mines = 0;
+unsigned int correctly_flagged_mines = 0;
 
 // 0 = undiscovered, 1 = cleared, 2 = flagged
 unsigned char interactive[WIDTH * HEIGHT] = {0};
@@ -92,11 +94,13 @@ void inc_number_at_xy(int x, int y) {
 
 void generate_map() {
     // Populate cells with mines
+    n_mines = 0;
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
             advance_rng();
             if (rng % 100 < PERCENT_MINES) {
                 field[y * WIDTH + x] = FIELD_MINE;
+                n_mines++;
                 inc_number_at_xy(x, y);
             }
         }
@@ -121,12 +125,68 @@ void recursive_clear(int x, int y) {
     }
 }
 
-int main() {
-    print_field();
-    generate_map();
-    // for (int i = 0; i < WIDTH * HEIGHT; i++)
-    // interactive[i] = INTER_DISCOVERED;
+// Assumes correct bounds
+void toggle_flag(int x, int y) {
+    int position = y * WIDTH + x;
+    if (interactive[position] == INTER_UNDISCOVERED) {
+        interactive[position] = INTER_FLAGGED;
+        if (field[position] == FIELD_MINE) {
+            correctly_flagged_mines += 1;  
+        } else {
+            correctly_flagged_mines -= 1;  
+        }
+    } else {
+        interactive[position] = INTER_UNDISCOVERED;
+        if (field[position] == FIELD_MINE) {
+            correctly_flagged_mines -= 1;  
+        } else {
+            correctly_flagged_mines += 1;  
+        }
+    }
+}
 
-    recursive_clear(1, 1);
-    print_field();
+void clear_mine(int x, int y) {
+    int position = y * WIDTH + x;
+    if (field[position] == FIELD_MINE) {
+        printf("You died!\n");
+        exit(-1);
+    }
+
+    recursive_clear(x, y);
+}
+
+int main() {
+    generate_map();
+    while (correctly_flagged_mines < n_mines) {
+        print_field();
+
+        // Read command
+        int command;
+        do {
+            printf(
+                    "What operation would you like to execute?\n"
+                    "0 = Clear\n"
+                    "1 = Toggle flag\n"
+                    "Operation: "
+                  );
+            scanf("%i", &command);
+        } while (command > 1);
+
+        // Read X and Y positions
+        int x, y;
+        do {
+            printf("X position: ");
+            scanf("%X", &x);
+            printf("Y position: ");
+            scanf("%X", &y);
+        } while (!bounds_check(x, y));
+
+        // Execute command
+        if (command == 1) {
+            toggle_flag(x, y);
+        } else {
+            clear_mine(x, y);
+        }
+    }
+    printf("You won!\n");
 }
