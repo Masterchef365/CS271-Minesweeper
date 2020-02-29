@@ -28,14 +28,23 @@ global main
     INTER_DISCOVERED equ 1
     INTER_FLAGGED equ 2
 
+    ; Display characters
     UNDISCOVERED_CHAR equ '-'
     FLAG_CHAR equ 'F'
     CLEAR_CHAR equ ' '
     MINE_CHAR equ '*'
 
+    ; Kernel lengths
+    FULL_AREA_KERNEL_LEN equ 8
+    ADJACENT_KERNEL_LEN equ 4
+
 ; Internal variables
 section .data
     rng dd 15
+    FULL_AREA_KERNEL_X dd -1, 0, 1, -1, 1, -1, 0, 1
+    FULL_AREA_KERNEL_Y dd -1, -1, -1, 0, 0, 1, 1, 1
+    ADJACENT_KERNEL_X dd -1, 0, 0, 1
+    ADJACENT_KERNEL_Y dd 0, -1, 1, 0
 
 section .bss
     field resb (WIDTH * HEIGHT)
@@ -47,7 +56,7 @@ section .text
 ; Clobbers: eax, edi, edx
 ; Operation: rng += 1103515245 * rng
 ; Notes:
-;   edx is also set to the value of RNG.
+;   eax is set to the value of RNG.
 ; https://stackoverflow.com/questions/3062746/special-simple-random-number-generator#3062783
 advance_rng:
     mov edi, 1103515245
@@ -64,18 +73,15 @@ place_mine_at_xy:
     mov eax, WIDTH
     mul ecx
     add eax, ebx
-    
-    ; esi = &field[eax]
-    lea esi, [field + eax]
-    
-    ; *esi = 1
-    mov al, FIELD_MINE
-    mov [esi], al
+
+    ; field[eax] = FIELD_MINE
+    mov bl, FIELD_MINE
+    mov [field + eax], bl
+
     ret
 
 
 ; Generates a new map
-; Clobbers: Everything tbh
 generate_map:
     ; Clear both of the arrays 
     mov ecx, WIDTH * HEIGHT
@@ -126,8 +132,9 @@ generate_map:
     ret
 
 
+; Prints the current map
 print_map:
-    ; Loop through all coordinates, populating it with mines
+
     mov ecx, 0 ; Y coord
     print_y_loop:
 
@@ -155,12 +162,14 @@ print_map:
         cmp ebx, WIDTH
         jl print_x_loop
 
+    ; Write a newline
     call Crlf
 
     ; if (++y > HEIGHT) break;
     add ecx, 1
     cmp ecx, HEIGHT
     jl print_y_loop
+
     ret
 
     
