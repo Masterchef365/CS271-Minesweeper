@@ -97,10 +97,10 @@ place_mine_at_xy:
         push ecx
 
         ; ebx += full_area_kernel_x[edi]
-        add ebx, [full_area_kernel_x + edi]
+        add ebx, [full_area_kernel_x + edi*4]
 
         ; ecx += full_area_kernel_y[edi]
-        add ecx, [full_area_kernel_y + edi]
+        add ecx, [full_area_kernel_y + edi*4]
 
         ; if (!bounds_check(ebx, ecx)) continue 
         call bounds_check
@@ -130,7 +130,7 @@ place_mine_at_xy:
 
      add edi, 1
      cmp edi, FULL_AREA_KERNEL_LEN
-     jle pm_area_loop
+     jl pm_area_loop
 
     ret
 
