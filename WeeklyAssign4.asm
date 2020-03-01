@@ -1,8 +1,4 @@
-%include 'Along32.inc'
-
-extern exit
-
-global main
+INCLUDE Irvine32.inc
 
 ; Calling convention:
 ; SUITABLE FOR CALLING: ebx, ecx, esi
@@ -13,15 +9,15 @@ global main
     ; Make sure to pop x and y back out
 
 ; Configurable constants
-    ; Width and height of the map
-    WIDTH equ 16
-    HEIGHT equ 16
-    PERCENT_MINES equ 10
+    ; MAP_WIDTH and height of the map
+    MAP_WIDTH = 16
+    HEIGHT = 16
+    PERCENT_MINES = 10
 
 ; Internal constants
     ; Field map codes
-    FIELD_CLEAR equ 0
-    FIELD_MINE equ 9
+    FIELD_CLEAR = 0
+    FIELD_MINE = 9
 
     ; Interactive map codes
     INTER_UNDISCOVERED equ 0
@@ -37,21 +33,21 @@ global main
     ; Kernel lengths
     FULL_AREA_KERNEL_LEN equ 8
     ADJACENT_KERNEL_LEN equ 4
-
+.data
 ; Internal variables
-section .data
     rng dd 15
     full_area_kernel_x dd -1, 0, 1, -1, 1, -1, 0, 1
     full_area_kernel_y dd -1, -1, -1, 0, 0, 1, 1, 1
     adjacent_kernel_x dd -1, 0, 0, 1
     adjacent_kernel_y dd 0, -1, 1, 0
+    field BYTE (MAP_WIDTH * HEIGHT) DUP(0)
+    interactive BYTE (MAP_WIDTH * HEIGHT) DUP(0)
 
-section .bss
-    field resb (WIDTH * HEIGHT)
-    interactive resb (WIDTH * HEIGHT)
+.code
+main PROC
 
-section .text
-
+call generate_map
+call print_map
 
 ; Clobbers: eax, edi, edx
 ; Operation: rng += 1103515245 * rng
@@ -68,14 +64,14 @@ advance_rng:
 
 ; x = ebx, y = ecx
 ; Set EFLAGS so that jl jumps any of the following are unsatisfied
-;   x >= 0 && y >= 0 && WIDTH - 1 >= x && HEIGHT - 1 >= y;
+;   x >= 0 && y >= 0 && MAP_WIDTH - 1 >= x && HEIGHT - 1 >= y;
 ; Clobbers: eax
 bounds_check:
     cmp ebx, 0
     jl bounds_check_break  
     cmp ecx, 0
     jl bounds_check_break  
-    mov eax, WIDTH - 1
+    mov eax, MAP_WIDTH - 1
     cmp eax, ebx
     jl bounds_check_break  
     mov eax, HEIGHT - 1
@@ -85,8 +81,8 @@ bounds_check:
 
 ; Clobbers: eax, edi
 place_mine_at_xy:
-    ; eax = (ecx * WIDTH) + ebx
-    mov eax, WIDTH
+    ; eax = (ecx * MAP_WIDTH) + ebx
+    mov eax, MAP_WIDTH
     mul ecx
     add eax, ebx
 
@@ -110,8 +106,8 @@ place_mine_at_xy:
         call bounds_check
         jl pm_area_loop_continue
 
-        ; eax = ecx * WIDTH + ebx
-        mov eax, WIDTH
+        ; eax = ecx * MAP_WIDTH + ebx
+        mov eax, MAP_WIDTH
         mul ecx
         add eax, ebx
 
@@ -142,7 +138,7 @@ place_mine_at_xy:
 ; Generates a new map
 generate_map:
     ; Clear both of the arrays 
-    mov ecx, WIDTH * HEIGHT
+    mov ecx, MAP_WIDTH * HEIGHT
     gm_clear_loop:
         mov bl, 0
         mov [field + ecx], bl
@@ -179,9 +175,9 @@ generate_map:
             
             gm_clear:
 
-        ; if (++x > WIDTH) break;
+        ; if (++x > MAP_WIDTH) break;
         add ebx, 1
-        cmp ebx, WIDTH
+        cmp ebx, MAP_WIDTH
         jl gm_x_loop
 
     ; if (++y > HEIGHT) break;
@@ -200,8 +196,8 @@ print_map:
         mov ebx, 0 ; X coord
         print_x_loop:
 
-            ; eax = (ecx * WIDTH) + ebx
-            mov eax, WIDTH
+            ; eax = (ecx * MAP_WIDTH) + ebx
+            mov eax, MAP_WIDTH
             mul ecx
             add eax, ebx
             
@@ -216,9 +212,9 @@ print_map:
             mov al, [esi]
             call WriteDec
 
-        ; if (++x > WIDTH) break;
+        ; if (++x > MAP_WIDTH) break;
         add ebx, 1
-        cmp ebx, WIDTH
+        cmp ebx, MAP_WIDTH
         jl print_x_loop
 
     ; Write a newline
@@ -231,13 +227,13 @@ print_map:
 
     ret
 
-    
-main:
-    call generate_map
-    call print_map
+  
 
 
-stop:
-    ; Exit with EXIT_SUCCESS
-    mov edi, 0
-    call exit
+exit
+
+main ENDP
+
+END main
+
+
