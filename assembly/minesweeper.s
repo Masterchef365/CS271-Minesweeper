@@ -16,7 +16,7 @@ global main
     ; Width and height of the map
     WIDTH equ 16
     HEIGHT equ 16
-    PERCENT_MINES equ 10
+    PERCENT_MINES equ 5
 
 ; Internal constants
     ; Field map codes
@@ -92,7 +92,7 @@ place_mine_at_xy:
 
     ; field[eax] = FIELD_MINE
     mov dl, FIELD_MINE
-    mov [field + eax], dl
+    mov byte [field + eax], dl
 
     mov edi, 0 ; Loop counter for full_area_kernel_{x, y}
     pm_area_loop:
@@ -116,7 +116,7 @@ place_mine_at_xy:
         add eax, ebx
 
         ; dl = field[eax]
-        mov dl, [field + eax]
+        mov dl, byte [field + eax]
 
         ; if (dl == FIELD_MINE) continue
         cmp dl, FIELD_MINE
@@ -126,7 +126,7 @@ place_mine_at_xy:
         add dl, 1
 
         ; field[eax] = dl
-        mov [field + eax], dl
+        mov byte [field + eax], dl
 
         pm_area_loop_continue:
         pop ecx
@@ -144,9 +144,8 @@ generate_map:
     ; Clear both of the arrays 
     mov ecx, WIDTH * HEIGHT
     gm_clear_loop:
-        mov bl, 0
-        mov [field + ecx], bl
-        mov [interactive + ecx], bl
+        mov byte [field + ecx], FIELD_CLEAR
+        mov byte [interactive + ecx], INTER_UNDISCOVERED
         loop gm_clear_loop
     
     
@@ -191,6 +190,15 @@ generate_map:
     ret
 
 seed_and_grow_clear:
+    ;push ebx
+    ;push ecx
+    ;call print_map
+    ;call Crlf
+    ;mov eax, 30
+    ;call Delay
+    ;pop ecx
+    ;pop ebx
+
     ; Save last position into the stack
     mov edi, 0
     seed_and_grow_adj_loop:
@@ -253,13 +261,13 @@ print_map:
         print_x_loop:
 
             ; al = field[ecx * WIDTH + ebx]
-            mov eax, WIDTH
-            mul ecx
-            add eax, ebx
+            mov edi, WIDTH
+            imul edi, ecx
+            add edi, ebx
             
             ; If not undiscovered, print the number
-            mov dl, byte [interactive + eax]
-            cmp dl, INTER_UNDISCOVERED
+            mov al, byte [interactive + edi]
+            cmp al, INTER_UNDISCOVERED
             jne print_do_num
 
             ; Write '-'
@@ -272,7 +280,8 @@ print_map:
             print_do_num:
             
             ; Write the number at the location
-            mov al, byte [field + eax]
+            mov eax, 0
+            mov al, byte [field + edi]
             call WriteDec
 
             print_loop_continue:
@@ -302,7 +311,6 @@ main:
     mov ebx, 2
     mov ecx, 6
     call seed_and_grow_clear
-    ;mov byte [interactive + 8], INTER_DISCOVERED
     call print_map
 
 
