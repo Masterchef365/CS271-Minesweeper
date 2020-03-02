@@ -190,8 +190,60 @@ generate_map:
     jl gm_y_loop
     ret
 
+seed_and_grow_clear:
+    ; Save last position into the stack
+    mov edi, 0
+    seed_and_grow_adj_loop:
+        push ebx
+        push ecx
+        push edi
+
+        ; x, y += kernel[i]
+        add ebx, [adjacent_kernel_x + edi*4]
+        add ecx, [adjacent_kernel_y + edi*4]
+
+        ; Bounds check
+        call bounds_check
+        jl seed_and_grow_continue
+
+        ; position (eax) = y * WIDTH + x
+        mov eax, WIDTH
+        mul ecx
+        add eax, ebx
+
+        ; If the area is not undiscovered (is discovered/flagged), don't discover it
+        cmp byte [interactive + eax], INTER_UNDISCOVERED
+        jne seed_and_grow_continue
+
+        ; If the area is a mine, continue loop
+        mov dl, byte [field + eax]
+        cmp dl, FIELD_MINE
+        je seed_and_grow_continue
+
+        ; "Discover" current location
+        mov byte [interactive + eax], INTER_DISCOVERED
+
+        ; If the area is not clear, don't seed-and-grow here
+        cmp dl, FIELD_CLEAR
+        jne seed_and_grow_continue
+
+        call seed_and_grow_clear
+        
+        seed_and_grow_continue:
+
+        pop edi
+        pop ecx
+        pop ebx
+
+    add edi, 1
+    cmp edi, ADJACENT_KERNEL_LEN
+    jl seed_and_grow_adj_loop
+
+    ret
+
 
 ; Prints the current map
+; Clobbers: eax, ecx, ebx
 print_map:
 
     mov ecx, 0 ; Y coord
@@ -200,21 +252,34 @@ print_map:
         mov ebx, 0 ; X coord
         print_x_loop:
 
-            ; eax = (ecx * WIDTH) + ebx
+            ; al = field[ecx * WIDTH + ebx]
             mov eax, WIDTH
             mul ecx
             add eax, ebx
             
-            ; esi = &field[eax]
-            lea esi, [field + eax]
+            ; If not undiscovered, print the number
+            mov dl, byte [interactive + eax]
+            cmp dl, INTER_UNDISCOVERED
+            jne print_do_num
+
+            ; Write '-'
+            mov al, '-'
+            call WriteChar
+
+            jmp print_loop_continue
+
+            ; Print the number
+            print_do_num:
+            
+            ; Write the number at the location
+            mov al, byte [field + eax]
+            call WriteDec
+
+            print_loop_continue:
 
             ; Write a space
-            mov eax, ' '
+            mov al, ' '
             call WriteChar
-            
-            ; Write [esi]
-            mov al, [esi]
-            call WriteDec
 
         ; if (++x > WIDTH) break;
         add ebx, 1
@@ -234,6 +299,10 @@ print_map:
     
 main:
     call generate_map
+    mov ebx, 2
+    mov ecx, 6
+    call seed_and_grow_clear
+    ;mov byte [interactive + 8], INTER_DISCOVERED
     call print_map
 
 
