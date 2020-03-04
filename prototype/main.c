@@ -54,18 +54,16 @@ void print_field() {
 
             if (inter_val == INTER_UNDISCOVERED) {
                 putchar(UNDISCOVERED_CHAR);
-                continue;
             } else if (inter_val == INTER_FLAGGED) {
                 putchar(FLAG_CHAR);
-                continue;
-            }
-
-            if (field_val == FIELD_CLEAR) {
-                putchar(CLEAR_CHAR);
-            } else if (field_val > FIELD_CLEAR && field_val < FIELD_MINE) {
-                printf("%i", field_val);
             } else {
-                putchar(MINE_CHAR);
+                if (field_val == FIELD_CLEAR) {
+                    putchar(CLEAR_CHAR);
+                } else if (field_val > FIELD_CLEAR && field_val < FIELD_MINE) {
+                    printf("%i", field_val);
+                } else {
+                    putchar(MINE_CHAR);
+                }
             }
         }
         putchar('\n');
