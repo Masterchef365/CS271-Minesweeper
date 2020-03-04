@@ -186,16 +186,51 @@ generate_map:
     jl gm_y_loop
     ret
 
+write_short_hex:
+    cmp eax, 10
+    jl write_short_hex_int
+
+    add eax, 'A' - 10
+    call WriteChar
+    ret
+
+    write_short_hex_int:
+    call WriteDec
+    ret
 
 ; Prints the current map
 print_map:
+    mov ecx, 0
+    mov eax, '-'
+    call WriteChar
+    mov eax, ' '
+    call WriteChar
+    call WriteChar
+    call WriteChar
+    write_x_coords:
+        mov eax, ecx
+        call write_short_hex
+        mov eax, ' '
+        call WriteChar
+        inc ecx
+        cmp ecx, MAP_WIDTH
+        jl write_x_coords
+    call CrLf
+    call CrLf
 
     mov ecx, 0 ; Y coord
     print_y_loop:
+        ; write numbers along the side
+        mov eax, ecx
+        call write_short_hex
+        mov eax, ' '
+        call WriteChar
+        call WriteChar
 
         mov ebx, 0 ; X coord
         print_x_loop:
-
+            
+            
             ; eax = (ecx * MAP_WIDTH) + ebx
             mov eax, MAP_WIDTH
             mul ecx
