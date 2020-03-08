@@ -49,6 +49,7 @@ main PROC
 call generate_map
 call print_map
 
+
 ; Clobbers: eax, edi, edx
 ; Operation: rng += 1103515245 * rng
 ; Notes:
@@ -206,7 +207,6 @@ print_map:
     mov eax, ' '
     call WriteChar
     call WriteChar
-    call WriteChar
     write_x_coords:
         mov eax, ecx
         call write_short_hex
@@ -232,20 +232,53 @@ print_map:
             
             
             ; eax = (ecx * MAP_WIDTH) + ebx
-            mov eax, MAP_WIDTH
-            mul ecx
-            add eax, ebx
+            mov edi, MAP_WIDTH
+            imul edi, ecx
+            add edi, ebx
+      
+            ; writes out space and then field
+            ;mov al, ' '
+            ;call WriteChar
+            ;mov al, [field + edi]
+            ;call WriteDec
             
-            ; esi = &field[eax]
-            lea esi, [field + eax]
+            ; check interactive map for 0 or 2
+            mov al, [interactive + edi]
+            cmp al, INTER_UNDISCOVERED
+            je print_dash
+            cmp al, INTER_FLAGGED
+            je F_in_the_chat
 
-            ; Write a space
+            ; case where its not 0 or 2
+            mov al, [field + edi]
+            cmp al, 9
+            je print_asterisk
+            cmp al, 0
+            je print_space
+            add al, '0'
+            call im_done
+
+            print_space:
+            mov eax, ' '
+            jmp im_done
+
+            print_dash:
+            mov eax, '-'
+            jmp im_done
+
+            F_in_the_chat:
+            mov eax, 'F'
+            jmp im_done
+
+            print_asterisk:
+            mov eax, '*'
+            jmp im_done
+
+            im_done:
+            call WriteChar
             mov eax, ' '
             call WriteChar
-            
-            ; Write [esi]
-            mov al, [esi]
-            call WriteDec
+
 
         ; if (++x > MAP_WIDTH) break;
         add ebx, 1
