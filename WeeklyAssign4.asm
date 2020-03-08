@@ -47,9 +47,6 @@ INCLUDE Irvine32.inc
 main PROC
 
 call generate_map
-mov ebx, 4
-mov ecx, 5
-call seed_and_grow_clear
 call print_map
 
 
@@ -141,11 +138,12 @@ place_mine_at_xy:
 
 ; Generates a new map
 generate_map:
+    call Randomize
     ; Clear both of the arrays 
     mov ecx, MAP_WIDTH * MAP_HEIGHT
     gm_clear_loop:
         mov [field + ecx], FIELD_CLEAR
-        mov [interactive + ecx], INTER_UNDISCOVERED
+        mov [interactive + ecx], INTER_DISCOVERED
         loop gm_clear_loop
     
     
@@ -155,17 +153,12 @@ generate_map:
 
         mov ebx, 0 ; X coord
         gm_x_loop:
-
-            ; edx = rand() % 100
-            call advance_rng
-            mov eax, [rng]
-            mov esi, 100
-            mov edx, 0
-            div esi
+            mov eax, 100
+            call RandomRange
 
             ; if (edx >= PERCENT_MINES) jmp gm_clear
             mov esi, PERCENT_MINES
-            cmp edx, esi
+            cmp eax, esi
             jge gm_clear
 
             ; else, place a mine at (ebx, ecx)
