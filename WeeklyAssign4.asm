@@ -12,7 +12,7 @@ INCLUDE Irvine32.inc
     ; MAP_WIDTH and height of the map
     MAP_WIDTH = 16
     MAP_HEIGHT = 16
-    PERCENT_MINES = 10
+    PERCENT_MINES = 1
 
 ; Internal constants
     ; Field map codes
@@ -83,12 +83,12 @@ game_loop:
         mov edx, OFFSET ask_x
         call WriteString
         call CrLf
-        call ReadInt
+        call ReadHex
         mov ebx, eax
         mov edx, OFFSET ask_y
         call WriteString
         call CrLf
-        call ReadInt
+        call ReadHex
         mov ecx, eax
         call bounds_check
         jge valid_x_and_y
@@ -107,9 +107,23 @@ game_loop:
 
     cmp esi, 0
     je clear_map
-        ; flag
-    jmp continue_game_loop
+        ; Toogle flag for this area
+        cmp [interactive + edi], INTER_FLAGGED
+        je is_flagged
+            mov [interactive + edi], INTER_FLAGGED          ; change the space to the code for a flag
+            cmp [field + edi], FIELD_MINE                   ; check if they flagged a mine
+            jne continue_game_loop
+                inc [flagged_mines]
+            jmp continue_game_loop
+        is_flagged:
+            mov [interactive + edi], INTER_UNDISCOVERED
+            cmp [field + edi], FIELD_MINE
+            jne continue_game_loop
+                dec [flagged_mines]
+            jmp continue_game_loop
+
     clear_map:
+        ; Clear this area
         cmp [field + edi], FIELD_MINE
         je dead
         ; Check if there's not a flag here
@@ -128,12 +142,9 @@ game_loop:
     cmp edi, [num_mines]
     jl game_loop
 
-    
-        
-
-
-
-
+    mov edx, OFFSET you_won
+    call WriteString
+    call CrLf
 
 
 

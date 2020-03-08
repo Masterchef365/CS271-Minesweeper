@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.24.28316.0	    03/08/20 15:39:27
+Microsoft (R) Macro Assembler Version 14.24.28316.0	    03/08/20 16:02:23
 WeeklyAssign4.asm					     Page 1 - 1
 
 
@@ -33,7 +33,7 @@ WeeklyAssign4.asm					     Page 1 - 1
 				    ; MAP_WIDTH and height of the map
  = 00000010			    MAP_WIDTH = 16
  = 00000010			    MAP_HEIGHT = 16
- = 0000000A			    PERCENT_MINES = 10
+ = 00000001			    PERCENT_MINES = 1
 
 				; Internal constants
 				    ; Field map codes
@@ -137,9 +137,9 @@ WeeklyAssign4.asm					     Page 1 - 1
  00000000			.code
  00000000			main PROC
 
- 00000000  E8 0000013C		call generate_map
+ 00000000  E8 00000182		call generate_map
  00000005			game_loop:
- 00000005  E8 000001F8		    call print_map
+ 00000005  E8 0000023E		    call print_map
  0000000A			    prompt_command_loop:
  0000000A  BA 00000264 R	        mov edx, OFFSET prompt_command
  0000000F  E8 00000000 E	        call WriteString
@@ -160,14 +160,14 @@ WeeklyAssign4.asm					     Page 1 - 1
  00000039  BA 000002A9 R	        mov edx, OFFSET ask_x
  0000003E  E8 00000000 E	        call WriteString
  00000043  E8 00000000 E	        call CrLf
- 00000048  E8 00000000 E	        call ReadInt
+ 00000048  E8 00000000 E	        call ReadHex
  0000004D  8B D8		        mov ebx, eax
  0000004F  BA 000002BE R	        mov edx, OFFSET ask_y
  00000054  E8 00000000 E	        call WriteString
  00000059  E8 00000000 E	        call CrLf
- 0000005E  E8 00000000 E	        call ReadInt
+ 0000005E  E8 00000000 E	        call ReadHex
  00000063  8B C8		        mov ecx, eax
- 00000065  E8 00000061		        call bounds_check
+ 00000065  E8 000000A7		        call bounds_check
  0000006A  7D 11		        jge valid_x_and_y
 				        ; Print error
  0000006C  BA 000002F3 R	        mov edx, OFFSET out_of_bounds
@@ -183,36 +183,52 @@ WeeklyAssign4.asm					     Page 1 - 1
  00000085  03 FB		    add edi, ebx
 
  00000087  83 FE 00		    cmp esi, 0
- 0000008A  74 02		    je clear_map
-				        ; flag
- 0000008C  EB 2B		    jmp continue_game_loop
- 0000008E			    clear_map:
- 0000008E  80 BF 00000064 R	        cmp [field + edi], FIELD_MINE
+ 0000008A  74 39		    je clear_map
+				        ; Toogle flag for this area
+ 0000008C  80 BF 00000164 R	        cmp [interactive + edi], INTER_FLAGGED
+	   02
+ 00000093  74 18		        je is_flagged
+ 00000095  C6 87 00000164 R	            mov [interactive + edi], INTER_FLAGGED          ; change the space to the code for a flag
+	   02
+ 0000009C  80 BF 00000064 R	            cmp [field + edi], FIELD_MINE                   ; check if they flagged a mine
 	   09
- 00000095  74 0E		        je dead
+ 000000A3  75 4B		            jne continue_game_loop
+ 000000A5  FF 05 00000316 R	                inc [flagged_mines]
+ 000000AB  EB 43		            jmp continue_game_loop
+ 000000AD			        is_flagged:
+ 000000AD  C6 87 00000164 R	            mov [interactive + edi], INTER_UNDISCOVERED
+	   00
+ 000000B4  80 BF 00000064 R	            cmp [field + edi], FIELD_MINE
+	   09
+ 000000BB  75 33		            jne continue_game_loop
+ 000000BD  FF 0D 00000316 R	                dec [flagged_mines]
+ 000000C3  EB 2B		            jmp continue_game_loop
+
+ 000000C5			    clear_map:
+				        ; Clear this area
+ 000000C5  80 BF 00000064 R	        cmp [field + edi], FIELD_MINE
+	   09
+ 000000CC  74 0E		        je dead
 				        ; Check if there's not a flag here
- 00000097  C6 87 00000164 R	        mov [interactive + edi], INTER_DISCOVERED
+ 000000CE  C6 87 00000164 R	        mov [interactive + edi], INTER_DISCOVERED
 	   01
- 0000009E  E8 000000F4		        call seed_and_grow_clear
- 000000A3  EB 14		        jmp continue_game_loop
- 000000A5			        dead:
- 000000A5  BA 000002D3 R	            mov edx, OFFSET you_died
- 000000AA  E8 00000000 E	            call WriteString
- 000000AF  E8 00000000 E	            call CrLf
- 000000B4  E9 0000021A		            jmp exit_label
+ 000000D5  E8 00000103		        call seed_and_grow_clear
+ 000000DA  EB 14		        jmp continue_game_loop
+ 000000DC			        dead:
+ 000000DC  BA 000002D3 R	            mov edx, OFFSET you_died
+ 000000E1  E8 00000000 E	            call WriteString
+ 000000E6  E8 00000000 E	            call CrLf
+ 000000EB  E9 00000229		            jmp exit_label
 				        
 
- 000000B9			   continue_game_loop: 
- 000000B9  8B 3D 00000316 R	    mov edi, [flagged_mines]
- 000000BF  3B 3D 0000031A R	    cmp edi, [num_mines]
- 000000C5  0F 8C FFFFFF3A	    jl game_loop
+ 000000F0			   continue_game_loop: 
+ 000000F0  8B 3D 00000316 R	    mov edi, [flagged_mines]
+ 000000F6  3B 3D 0000031A R	    cmp edi, [num_mines]
+ 000000FC  0F 8C FFFFFF03	    jl game_loop
 
-				    
-				        
-
-
-
-
+ 00000102  BA 000002E1 R	    mov edx, OFFSET you_won
+ 00000107  E8 00000000 E	    call WriteString
+ 0000010C  E8 00000000 E	    call CrLf
 
 
 
@@ -220,296 +236,296 @@ WeeklyAssign4.asm					     Page 1 - 1
 				; Set EFLAGS so that jl jumps any of the following are unsatisfied
 				;   x >= 0 && y >= 0 && MAP_WIDTH - 1 >= x && MAP_HEIGHT - 1 >= y;
 				; Clobbers: eax
- 000000CB			bounds_check:
- 000000CB  83 FB 00		    cmp ebx, 0
- 000000CE  7C 15		    jl bounds_check_break  
- 000000D0  83 F9 00		    cmp ecx, 0
- 000000D3  7C 10		    jl bounds_check_break  
- 000000D5  B8 0000000F		    mov eax, MAP_WIDTH - 1
- 000000DA  3B C3		    cmp eax, ebx
- 000000DC  7C 07		    jl bounds_check_break  
- 000000DE  B8 0000000F		    mov eax, MAP_HEIGHT - 1
- 000000E3  3B C1		    cmp eax, ecx
- 000000E5			    bounds_check_break:
- 000000E5  C3			    ret
+ 00000111			bounds_check:
+ 00000111  83 FB 00		    cmp ebx, 0
+ 00000114  7C 15		    jl bounds_check_break  
+ 00000116  83 F9 00		    cmp ecx, 0
+ 00000119  7C 10		    jl bounds_check_break  
+ 0000011B  B8 0000000F		    mov eax, MAP_WIDTH - 1
+ 00000120  3B C3		    cmp eax, ebx
+ 00000122  7C 07		    jl bounds_check_break  
+ 00000124  B8 0000000F		    mov eax, MAP_HEIGHT - 1
+ 00000129  3B C1		    cmp eax, ecx
+ 0000012B			    bounds_check_break:
+ 0000012B  C3			    ret
 
 				; Clobbers: eax, edi
- 000000E6			place_mine_at_xy:
- 000000E6  FF 05 0000031A R	    inc [num_mines]
+ 0000012C			place_mine_at_xy:
+ 0000012C  FF 05 0000031A R	    inc [num_mines]
 				    ; eax = (ecx * MAP_WIDTH) + ebx
- 000000EC  B8 00000010		    mov eax, MAP_WIDTH
- 000000F1  F7 E1		    mul ecx
- 000000F3  03 C3		    add eax, ebx
+ 00000132  B8 00000010		    mov eax, MAP_WIDTH
+ 00000137  F7 E1		    mul ecx
+ 00000139  03 C3		    add eax, ebx
 
 				    ; field[eax] = FIELD_MINE
- 000000F5  B2 09		    mov dl, FIELD_MINE
- 000000F7  88 90 00000064 R	    mov [field + eax], dl
+ 0000013B  B2 09		    mov dl, FIELD_MINE
+ 0000013D  88 90 00000064 R	    mov [field + eax], dl
 
- 000000FD  BF 00000000		    mov edi, 0 ; Loop counter for full_area_kernel_{x, y}
- 00000102			    pm_area_loop:
+ 00000143  BF 00000000		    mov edi, 0 ; Loop counter for full_area_kernel_{x, y}
+ 00000148			    pm_area_loop:
 				        ; We're about to clobber these two, save 'em
- 00000102  53			        push ebx
- 00000103  51			        push ecx
+ 00000148  53			        push ebx
+ 00000149  51			        push ecx
 
 				        ; ebx += full_area_kernel_x[edi]
- 00000104  03 1C BD		        add ebx, [full_area_kernel_x + edi*4]
+ 0000014A  03 1C BD		        add ebx, [full_area_kernel_x + edi*4]
 	   00000004 R
 
 				        ; ecx += full_area_kernel_y[edi]
- 0000010B  03 0C BD		        add ecx, [full_area_kernel_y + edi*4]
+ 00000151  03 0C BD		        add ecx, [full_area_kernel_y + edi*4]
 	   00000024 R
 
 				        ; if (!bounds_check(ebx, ecx)) continue 
- 00000112  E8 FFFFFFB4		        call bounds_check
- 00000117  7C 1D		        jl pm_area_loop_continue
+ 00000158  E8 FFFFFFB4		        call bounds_check
+ 0000015D  7C 1D		        jl pm_area_loop_continue
 
 				        ; eax = ecx * MAP_WIDTH + ebx
- 00000119  B8 00000010		        mov eax, MAP_WIDTH
- 0000011E  F7 E1		        mul ecx
- 00000120  03 C3		        add eax, ebx
+ 0000015F  B8 00000010		        mov eax, MAP_WIDTH
+ 00000164  F7 E1		        mul ecx
+ 00000166  03 C3		        add eax, ebx
 
 				        ; dl = field[eax]
- 00000122  8A 90 00000064 R	        mov dl, [field + eax]
+ 00000168  8A 90 00000064 R	        mov dl, [field + eax]
 
 				        ; if (dl == FIELD_MINE) continue
- 00000128  80 FA 09		        cmp dl, FIELD_MINE
- 0000012B  74 09		        je pm_area_loop_continue
+ 0000016E  80 FA 09		        cmp dl, FIELD_MINE
+ 00000171  74 09		        je pm_area_loop_continue
 
 				        ; dl += 1
- 0000012D  80 C2 01		        add dl, 1
+ 00000173  80 C2 01		        add dl, 1
 
 				        ; field[eax] = dl
- 00000130  88 90 00000064 R	        mov [field + eax], dl
+ 00000176  88 90 00000064 R	        mov [field + eax], dl
 
- 00000136			        pm_area_loop_continue:
- 00000136  59			        pop ecx
- 00000137  5B			        pop ebx
+ 0000017C			        pm_area_loop_continue:
+ 0000017C  59			        pop ecx
+ 0000017D  5B			        pop ebx
 
- 00000138  83 C7 01		     add edi, 1
- 0000013B  83 FF 08		     cmp edi, FULL_AREA_KERNEL_LEN
- 0000013E  7C C2		     jl pm_area_loop
+ 0000017E  83 C7 01		     add edi, 1
+ 00000181  83 FF 08		     cmp edi, FULL_AREA_KERNEL_LEN
+ 00000184  7C C2		     jl pm_area_loop
 
- 00000140  C3			    ret
+ 00000186  C3			    ret
 
 
 				; Generates a new map
- 00000141			generate_map:
- 00000141  C7 05 0000031A R	    mov [num_mines], 0
+ 00000187			generate_map:
+ 00000187  C7 05 0000031A R	    mov [num_mines], 0
 	   00000000
 				    ;call Randomize
 				    ; Clear both of the arrays 
- 0000014B  B9 00000100		    mov ecx, MAP_WIDTH * MAP_HEIGHT
- 00000150			    gm_clear_loop:
- 00000150  C6 81 00000064 R	        mov [field + ecx], FIELD_CLEAR
+ 00000191  B9 00000100		    mov ecx, MAP_WIDTH * MAP_HEIGHT
+ 00000196			    gm_clear_loop:
+ 00000196  C6 81 00000064 R	        mov [field + ecx], FIELD_CLEAR
 	   00
- 00000157  C6 81 00000164 R	        mov [interactive + ecx], INTER_UNDISCOVERED
+ 0000019D  C6 81 00000164 R	        mov [interactive + ecx], INTER_UNDISCOVERED
 	   00
- 0000015E  E2 F0		        loop gm_clear_loop
+ 000001A4  E2 F0		        loop gm_clear_loop
 				    
 				    
 				    ; Loop through all coordinates, populating it with mines
- 00000160  B9 00000000		    mov ecx, 0 ; Y coord
- 00000165			    gm_y_loop:
+ 000001A6  B9 00000000		    mov ecx, 0 ; Y coord
+ 000001AB			    gm_y_loop:
 
- 00000165  BB 00000000		        mov ebx, 0 ; X coord
- 0000016A			        gm_x_loop:
- 0000016A  B8 00000064		            mov eax, 100
- 0000016F  E8 00000000 E	            call RandomRange
+ 000001AB  BB 00000000		        mov ebx, 0 ; X coord
+ 000001B0			        gm_x_loop:
+ 000001B0  B8 00000064		            mov eax, 100
+ 000001B5  E8 00000000 E	            call RandomRange
 
 				            ; if (edx >= PERCENT_MINES) jmp gm_clear
- 00000174  BE 0000000A		            mov esi, PERCENT_MINES
- 00000179  3B C6		            cmp eax, esi
- 0000017B  7D 09		            jge gm_clear
+ 000001BA  BE 00000001		            mov esi, PERCENT_MINES
+ 000001BF  3B C6		            cmp eax, esi
+ 000001C1  7D 09		            jge gm_clear
 
 				            ; else, place a mine at (ebx, ecx)
 				            ; TODO: Comment out these push/pop, they're not needed!
- 0000017D  53			            push ebx
- 0000017E  51			            push ecx
- 0000017F  E8 FFFFFF62		            call place_mine_at_xy
- 00000184  59			            pop ecx
- 00000185  5B			            pop ebx
+ 000001C3  53			            push ebx
+ 000001C4  51			            push ecx
+ 000001C5  E8 FFFFFF62		            call place_mine_at_xy
+ 000001CA  59			            pop ecx
+ 000001CB  5B			            pop ebx
 				            
- 00000186			            gm_clear:
+ 000001CC			            gm_clear:
 
 				        ; if (++x > MAP_WIDTH) break;
- 00000186  83 C3 01		        add ebx, 1
- 00000189  83 FB 10		        cmp ebx, MAP_WIDTH
- 0000018C  7C DC		        jl gm_x_loop
+ 000001CC  83 C3 01		        add ebx, 1
+ 000001CF  83 FB 10		        cmp ebx, MAP_WIDTH
+ 000001D2  7C DC		        jl gm_x_loop
 
 				    ; if (++y > MAP_HEIGHT) break;
- 0000018E  83 C1 01		    add ecx, 1
- 00000191  83 F9 10		    cmp ecx, MAP_HEIGHT
- 00000194  7C CF		    jl gm_y_loop
- 00000196  C3			    ret
+ 000001D4  83 C1 01		    add ecx, 1
+ 000001D7  83 F9 10		    cmp ecx, MAP_HEIGHT
+ 000001DA  7C CF		    jl gm_y_loop
+ 000001DC  C3			    ret
 
- 00000197			seed_and_grow_clear:
+ 000001DD			seed_and_grow_clear:
 				    ; Save last position into the stack
- 00000197  BF 00000000		    mov edi, 0
- 0000019C			    seed_and_grow_adj_loop:
- 0000019C  53			        push ebx
- 0000019D  51			        push ecx
- 0000019E  57			        push edi
+ 000001DD  BF 00000000		    mov edi, 0
+ 000001E2			    seed_and_grow_adj_loop:
+ 000001E2  53			        push ebx
+ 000001E3  51			        push ecx
+ 000001E4  57			        push edi
 
 				        ; x, y += kernel[i]
- 0000019F  03 1C BD		        add ebx, [adjacent_kernel_x + edi*4]
+ 000001E5  03 1C BD		        add ebx, [adjacent_kernel_x + edi*4]
 	   00000044 R
- 000001A6  03 0C BD		        add ecx, [adjacent_kernel_y + edi*4]
+ 000001EC  03 0C BD		        add ecx, [adjacent_kernel_y + edi*4]
 	   00000054 R
 
 				        ; Bounds check
- 000001AD  E8 FFFFFF19		        call bounds_check
- 000001B2  7C 2E		        jl seed_and_grow_continue
+ 000001F3  E8 FFFFFF19		        call bounds_check
+ 000001F8  7C 2E		        jl seed_and_grow_continue
 
 				        ; position (eax) = y * WIDTH + x
- 000001B4  B8 00000010		        mov eax, MAP_WIDTH
- 000001B9  F7 E1		        mul ecx
- 000001BB  03 C3		        add eax, ebx
+ 000001FA  B8 00000010		        mov eax, MAP_WIDTH
+ 000001FF  F7 E1		        mul ecx
+ 00000201  03 C3		        add eax, ebx
 
 				        ; If the area is not undiscovered (is discovered/flagged), don't discover it
- 000001BD  80 B8 00000164 R	        cmp [interactive + eax], INTER_UNDISCOVERED
+ 00000203  80 B8 00000164 R	        cmp [interactive + eax], INTER_UNDISCOVERED
 	   00
- 000001C4  75 1C		        jne seed_and_grow_continue
+ 0000020A  75 1C		        jne seed_and_grow_continue
 
 				        ; If the area is a mine, continue loop
- 000001C6  8A 90 00000064 R	        mov dl, [field + eax]
- 000001CC  80 FA 09		        cmp dl, FIELD_MINE
- 000001CF  74 11		        je seed_and_grow_continue
+ 0000020C  8A 90 00000064 R	        mov dl, [field + eax]
+ 00000212  80 FA 09		        cmp dl, FIELD_MINE
+ 00000215  74 11		        je seed_and_grow_continue
 
 				        ; "Discover" current location
- 000001D1  C6 80 00000164 R	        mov [interactive + eax], INTER_DISCOVERED
+ 00000217  C6 80 00000164 R	        mov [interactive + eax], INTER_DISCOVERED
 	   01
 
 				        ; If the area is not clear, don't seed-and-grow here
- 000001D8  80 FA 00		        cmp dl, FIELD_CLEAR
- 000001DB  75 05		        jne seed_and_grow_continue
+ 0000021E  80 FA 00		        cmp dl, FIELD_CLEAR
+ 00000221  75 05		        jne seed_and_grow_continue
 
- 000001DD  E8 FFFFFFB5		        call seed_and_grow_clear
+ 00000223  E8 FFFFFFB5		        call seed_and_grow_clear
 				        
- 000001E2			        seed_and_grow_continue:
+ 00000228			        seed_and_grow_continue:
 
- 000001E2  5F			        pop edi
- 000001E3  59			        pop ecx
- 000001E4  5B			        pop ebx
+ 00000228  5F			        pop edi
+ 00000229  59			        pop ecx
+ 0000022A  5B			        pop ebx
 
- 000001E5  83 C7 01		    add edi, 1
- 000001E8  83 FF 04		    cmp edi, ADJACENT_KERNEL_LEN
- 000001EB  7C AF		    jl seed_and_grow_adj_loop
+ 0000022B  83 C7 01		    add edi, 1
+ 0000022E  83 FF 04		    cmp edi, ADJACENT_KERNEL_LEN
+ 00000231  7C AF		    jl seed_and_grow_adj_loop
 
- 000001ED  C3			    ret
+ 00000233  C3			    ret
 
- 000001EE			write_short_hex:
- 000001EE  83 F8 0A		    cmp eax, 10
- 000001F1  7C 09		    jl write_short_hex_int
+ 00000234			write_short_hex:
+ 00000234  83 F8 0A		    cmp eax, 10
+ 00000237  7C 09		    jl write_short_hex_int
 
- 000001F3  83 C0 37		    add eax, 'A' - 10
- 000001F6  E8 00000000 E	    call WriteChar
- 000001FB  C3			    ret
+ 00000239  83 C0 37		    add eax, 'A' - 10
+ 0000023C  E8 00000000 E	    call WriteChar
+ 00000241  C3			    ret
 
- 000001FC			    write_short_hex_int:
- 000001FC  E8 00000000 E	    call WriteDec
- 00000201  C3			    ret
+ 00000242			    write_short_hex_int:
+ 00000242  E8 00000000 E	    call WriteDec
+ 00000247  C3			    ret
 
 				; Prints the current map
- 00000202			print_map:
- 00000202  B9 00000000		    mov ecx, 0
- 00000207  B8 0000002D		    mov eax, '-'
- 0000020C  E8 00000000 E	    call WriteChar
- 00000211  B8 00000020		    mov eax, ' '
- 00000216  E8 00000000 E	    call WriteChar
- 0000021B  E8 00000000 E	    call WriteChar
- 00000220			    write_x_coords:
- 00000220  8B C1		        mov eax, ecx
- 00000222  E8 FFFFFFC7		        call write_short_hex
- 00000227  B8 00000020		        mov eax, ' '
- 0000022C  E8 00000000 E	        call WriteChar
- 00000231  41			        inc ecx
- 00000232  83 F9 10		        cmp ecx, MAP_WIDTH
- 00000235  7C E9		        jl write_x_coords
- 00000237  E8 00000000 E	    call CrLf
- 0000023C  E8 00000000 E	    call CrLf
+ 00000248			print_map:
+ 00000248  B9 00000000		    mov ecx, 0
+ 0000024D  B8 0000002D		    mov eax, '-'
+ 00000252  E8 00000000 E	    call WriteChar
+ 00000257  B8 00000020		    mov eax, ' '
+ 0000025C  E8 00000000 E	    call WriteChar
+ 00000261  E8 00000000 E	    call WriteChar
+ 00000266			    write_x_coords:
+ 00000266  8B C1		        mov eax, ecx
+ 00000268  E8 FFFFFFC7		        call write_short_hex
+ 0000026D  B8 00000020		        mov eax, ' '
+ 00000272  E8 00000000 E	        call WriteChar
+ 00000277  41			        inc ecx
+ 00000278  83 F9 10		        cmp ecx, MAP_WIDTH
+ 0000027B  7C E9		        jl write_x_coords
+ 0000027D  E8 00000000 E	    call CrLf
+ 00000282  E8 00000000 E	    call CrLf
 
- 00000241  B9 00000000		    mov ecx, 0 ; Y coord
- 00000246			    print_y_loop:
+ 00000287  B9 00000000		    mov ecx, 0 ; Y coord
+ 0000028C			    print_y_loop:
 				        ; write numbers along the side
- 00000246  8B C1		        mov eax, ecx
- 00000248  E8 FFFFFFA1		        call write_short_hex
- 0000024D  B8 00000020		        mov eax, ' '
- 00000252  E8 00000000 E	        call WriteChar
- 00000257  E8 00000000 E	        call WriteChar
+ 0000028C  8B C1		        mov eax, ecx
+ 0000028E  E8 FFFFFFA1		        call write_short_hex
+ 00000293  B8 00000020		        mov eax, ' '
+ 00000298  E8 00000000 E	        call WriteChar
+ 0000029D  E8 00000000 E	        call WriteChar
 
- 0000025C  BB 00000000		        mov ebx, 0 ; X coord
- 00000261			        print_x_loop:
+ 000002A2  BB 00000000		        mov ebx, 0 ; X coord
+ 000002A7			        print_x_loop:
 				            ; eax = (ecx * MAP_WIDTH) + ebx
- 00000261  BF 00000010		            mov edi, MAP_WIDTH
- 00000266  0F AF F9		            imul edi, ecx
- 00000269  03 FB		            add edi, ebx
+ 000002A7  BF 00000010		            mov edi, MAP_WIDTH
+ 000002AC  0F AF F9		            imul edi, ecx
+ 000002AF  03 FB		            add edi, ebx
 
 				            ; check interactive map for 0 or 2
- 0000026B  8A 87 00000164 R	            mov al, [interactive + edi]
- 00000271  3C 00		            cmp al, INTER_UNDISCOVERED
- 00000273  74 20		            je print_dash
- 00000275  3C 02		            cmp al, INTER_FLAGGED
- 00000277  74 23		            je F_in_the_chat
+ 000002B1  8A 87 00000164 R	            mov al, [interactive + edi]
+ 000002B7  3C 00		            cmp al, INTER_UNDISCOVERED
+ 000002B9  74 20		            je print_dash
+ 000002BB  3C 02		            cmp al, INTER_FLAGGED
+ 000002BD  74 23		            je F_in_the_chat
 
 				            ; case where its not 0 or 2
- 00000279  8A 87 00000064 R	            mov al, [field + edi]
- 0000027F  3C 09		            cmp al, FIELD_MINE
- 00000281  74 20		            je print_asterisk
- 00000283  3C 00		            cmp al, FIELD_CLEAR
- 00000285  74 07		            je print_space
- 00000287  04 30		            add al, '0'
- 00000289  E8 0000001C		            call im_done
+ 000002BF  8A 87 00000064 R	            mov al, [field + edi]
+ 000002C5  3C 09		            cmp al, FIELD_MINE
+ 000002C7  74 20		            je print_asterisk
+ 000002C9  3C 00		            cmp al, FIELD_CLEAR
+ 000002CB  74 07		            je print_space
+ 000002CD  04 30		            add al, '0'
+ 000002CF  E8 0000001C		            call im_done
 
- 0000028E			            print_space:
- 0000028E  B8 00000020		            mov eax, CLEAR_CHAR
- 00000293  EB 15		            jmp im_done
+ 000002D4			            print_space:
+ 000002D4  B8 00000020		            mov eax, CLEAR_CHAR
+ 000002D9  EB 15		            jmp im_done
 
- 00000295			            print_dash:
- 00000295  B8 0000002D		            mov eax, UNDISCOVERED_CHAR
- 0000029A  EB 0E		            jmp im_done
+ 000002DB			            print_dash:
+ 000002DB  B8 0000002D		            mov eax, UNDISCOVERED_CHAR
+ 000002E0  EB 0E		            jmp im_done
 
- 0000029C			            F_in_the_chat:
- 0000029C  B8 00000046		            mov eax, FLAG_CHAR
- 000002A1  EB 07		            jmp im_done
+ 000002E2			            F_in_the_chat:
+ 000002E2  B8 00000046		            mov eax, FLAG_CHAR
+ 000002E7  EB 07		            jmp im_done
 
- 000002A3			            print_asterisk:
- 000002A3  B8 0000002A		            mov eax, MINE_CHAR
- 000002A8  EB 00		            jmp im_done
+ 000002E9			            print_asterisk:
+ 000002E9  B8 0000002A		            mov eax, MINE_CHAR
+ 000002EE  EB 00		            jmp im_done
 
- 000002AA			            im_done:
- 000002AA  E8 00000000 E	            call WriteChar
- 000002AF  B8 00000020		            mov eax, ' '
- 000002B4  E8 00000000 E	            call WriteChar
+ 000002F0			            im_done:
+ 000002F0  E8 00000000 E	            call WriteChar
+ 000002F5  B8 00000020		            mov eax, ' '
+ 000002FA  E8 00000000 E	            call WriteChar
 
 
 				        ; if (++x > MAP_WIDTH) break;
- 000002B9  83 C3 01		        add ebx, 1
- 000002BC  83 FB 10		        cmp ebx, MAP_WIDTH
- 000002BF  7C A0		        jl print_x_loop
+ 000002FF  83 C3 01		        add ebx, 1
+ 00000302  83 FB 10		        cmp ebx, MAP_WIDTH
+ 00000305  7C A0		        jl print_x_loop
 
 				    ; Write a newline
- 000002C1  E8 00000000 E	    call Crlf
+ 00000307  E8 00000000 E	    call Crlf
 
 				    ; if (++y > MAP_HEIGHT) break;
- 000002C6  83 C1 01		    add ecx, 1
- 000002C9  83 F9 10		    cmp ecx, MAP_HEIGHT
- 000002CC  0F 8C FFFFFF74	    jl print_y_loop
+ 0000030C  83 C1 01		    add ecx, 1
+ 0000030F  83 F9 10		    cmp ecx, MAP_HEIGHT
+ 00000312  0F 8C FFFFFF74	    jl print_y_loop
 
- 000002D2  C3			    ret
+ 00000318  C3			    ret
 
 				  
 
- 000002D3			exit_label:
+ 00000319			exit_label:
 				    exit
- 000002D3  6A 00	   *	    push   +000000000h
- 000002D5  E8 00000000 E   *	    call   ExitProcess
+ 00000319  6A 00	   *	    push   +000000000h
+ 0000031B  E8 00000000 E   *	    call   ExitProcess
 
- 000002DA			main ENDP
+ 00000320			main ENDP
 
 				END main
 
 
-Microsoft (R) Macro Assembler Version 14.24.28316.0	    03/08/20 15:39:27
+Microsoft (R) Macro Assembler Version 14.24.28316.0	    03/08/20 16:02:23
 WeeklyAssign4.asm					     Symbols 2 - 1
 
 
@@ -604,7 +620,7 @@ Segments and Groups:
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
 _DATA  . . . . . . . . . . . . .	32 Bit	 0000031E Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 000002DA Para	  Public  'CODE'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000320 Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -711,39 +727,40 @@ WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteToFile  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteWindowsMsg  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000002DA Public STDCALL
+main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000320 Public STDCALL
   game_loop  . . . . . . . . . .	L Near	 00000005 _TEXT	
   prompt_command_loop  . . . . .	L Near	 0000000A _TEXT	
   get_x_and_y  . . . . . . . . .	L Near	 00000039 _TEXT	
   valid_x_and_y  . . . . . . . .	L Near	 0000007D _TEXT	
-  clear_map  . . . . . . . . . .	L Near	 0000008E _TEXT	
-  dead . . . . . . . . . . . . .	L Near	 000000A5 _TEXT	
-  continue_game_loop . . . . . .	L Near	 000000B9 _TEXT	
-  bounds_check . . . . . . . . .	L Near	 000000CB _TEXT	
-  bounds_check_break . . . . . .	L Near	 000000E5 _TEXT	
-  place_mine_at_xy . . . . . . .	L Near	 000000E6 _TEXT	
-  pm_area_loop . . . . . . . . .	L Near	 00000102 _TEXT	
-  pm_area_loop_continue  . . . .	L Near	 00000136 _TEXT	
-  generate_map . . . . . . . . .	L Near	 00000141 _TEXT	
-  gm_clear_loop  . . . . . . . .	L Near	 00000150 _TEXT	
-  gm_y_loop  . . . . . . . . . .	L Near	 00000165 _TEXT	
-  gm_x_loop  . . . . . . . . . .	L Near	 0000016A _TEXT	
-  gm_clear . . . . . . . . . . .	L Near	 00000186 _TEXT	
-  seed_and_grow_clear  . . . . .	L Near	 00000197 _TEXT	
-  seed_and_grow_adj_loop . . . .	L Near	 0000019C _TEXT	
-  seed_and_grow_continue . . . .	L Near	 000001E2 _TEXT	
-  write_short_hex  . . . . . . .	L Near	 000001EE _TEXT	
-  write_short_hex_int  . . . . .	L Near	 000001FC _TEXT	
-  print_map  . . . . . . . . . .	L Near	 00000202 _TEXT	
-  write_x_coords . . . . . . . .	L Near	 00000220 _TEXT	
-  print_y_loop . . . . . . . . .	L Near	 00000246 _TEXT	
-  print_x_loop . . . . . . . . .	L Near	 00000261 _TEXT	
-  print_space  . . . . . . . . .	L Near	 0000028E _TEXT	
-  print_dash . . . . . . . . . .	L Near	 00000295 _TEXT	
-  F_in_the_chat  . . . . . . . .	L Near	 0000029C _TEXT	
-  print_asterisk . . . . . . . .	L Near	 000002A3 _TEXT	
-  im_done  . . . . . . . . . . .	L Near	 000002AA _TEXT	
-  exit_label . . . . . . . . . .	L Near	 000002D3 _TEXT	
+  is_flagged . . . . . . . . . .	L Near	 000000AD _TEXT	
+  clear_map  . . . . . . . . . .	L Near	 000000C5 _TEXT	
+  dead . . . . . . . . . . . . .	L Near	 000000DC _TEXT	
+  continue_game_loop . . . . . .	L Near	 000000F0 _TEXT	
+  bounds_check . . . . . . . . .	L Near	 00000111 _TEXT	
+  bounds_check_break . . . . . .	L Near	 0000012B _TEXT	
+  place_mine_at_xy . . . . . . .	L Near	 0000012C _TEXT	
+  pm_area_loop . . . . . . . . .	L Near	 00000148 _TEXT	
+  pm_area_loop_continue  . . . .	L Near	 0000017C _TEXT	
+  generate_map . . . . . . . . .	L Near	 00000187 _TEXT	
+  gm_clear_loop  . . . . . . . .	L Near	 00000196 _TEXT	
+  gm_y_loop  . . . . . . . . . .	L Near	 000001AB _TEXT	
+  gm_x_loop  . . . . . . . . . .	L Near	 000001B0 _TEXT	
+  gm_clear . . . . . . . . . . .	L Near	 000001CC _TEXT	
+  seed_and_grow_clear  . . . . .	L Near	 000001DD _TEXT	
+  seed_and_grow_adj_loop . . . .	L Near	 000001E2 _TEXT	
+  seed_and_grow_continue . . . .	L Near	 00000228 _TEXT	
+  write_short_hex  . . . . . . .	L Near	 00000234 _TEXT	
+  write_short_hex_int  . . . . .	L Near	 00000242 _TEXT	
+  print_map  . . . . . . . . . .	L Near	 00000248 _TEXT	
+  write_x_coords . . . . . . . .	L Near	 00000266 _TEXT	
+  print_y_loop . . . . . . . . .	L Near	 0000028C _TEXT	
+  print_x_loop . . . . . . . . .	L Near	 000002A7 _TEXT	
+  print_space  . . . . . . . . .	L Near	 000002D4 _TEXT	
+  print_dash . . . . . . . . . .	L Near	 000002DB _TEXT	
+  F_in_the_chat  . . . . . . . .	L Near	 000002E2 _TEXT	
+  print_asterisk . . . . . . . .	L Near	 000002E9 _TEXT	
+  im_done  . . . . . . . . . . .	L Near	 000002F0 _TEXT	
+  exit_label . . . . . . . . . .	L Near	 00000319 _TEXT	
 printf . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
 scanf  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
 wsprintfA  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
@@ -878,7 +895,7 @@ NULL . . . . . . . . . . . . . .	Number	 00000000h
 NUMLOCK_ON . . . . . . . . . . .	Number	 00000020h   
 OPEN_ALWAYS  . . . . . . . . . .	Number	 00000004h   
 OPEN_EXISTING  . . . . . . . . .	Number	 00000003h   
-PERCENT_MINES  . . . . . . . . .	Number	 0000000Ah   
+PERCENT_MINES  . . . . . . . . .	Number	 00000001h   
 PeekConsoleInput . . . . . . . .	Text   	 PeekConsoleInputA
 RIGHT_ALT_PRESSED  . . . . . . .	Number	 00000001h   
 RIGHT_CTRL_PRESSED . . . . . . .	Number	 00000004h   
