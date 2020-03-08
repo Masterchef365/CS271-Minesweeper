@@ -43,25 +43,99 @@ INCLUDE Irvine32.inc
     field BYTE (MAP_WIDTH * MAP_HEIGHT) DUP(0)
     interactive BYTE (MAP_WIDTH * MAP_HEIGHT) DUP(0)
 
+; string variables
+    prompt_command          BYTE "What operation would you like to execute?", 0
+    prompt_command_options  BYTE "0 = clear, 1 = toggle flag", 0
+    ask_x                   BYTE "Enter X coordinate: ", 0
+    ask_y                   BYTE "Enter Y coordinate: ", 0
+    you_died                BYTE "You lost nerd", 0
+    you_won                 BYTE "You won who cares", 0
+    out_of_bounds           BYTE "Entered numbers were not in bounds", 0
+
+; integer variables
+    flagged_mines           DWORD 0
+    num_mines               DWORD 0
+
+
 .code
 main PROC
 
 call generate_map
-call print_map
+game_loop:
+    call print_map
+    prompt_command_loop:
+        mov edx, OFFSET prompt_command
+        call WriteString
+        call CrLf
+        mov edx, OFFSET prompt_command_options
+        call WriteString
+        call CrLf
+        call ReadInt
+        cmp eax, 1
+        jg prompt_command_loop
+        cmp eax, 0
+        jl prompt_command_loop
+
+    mov esi, eax
+ 
+
+      get_x_and_y:
+        mov edx, OFFSET ask_x
+        call WriteString
+        call CrLf
+        call ReadInt
+        mov ebx, eax
+        mov edx, OFFSET ask_y
+        call WriteString
+        call CrLf
+        call ReadInt
+        mov ecx, eax
+        call bounds_check
+        jge valid_x_and_y
+        ; Print error
+        mov edx, OFFSET out_of_bounds
+        call WriteString
+        call CrLf
+        jmp get_x_and_y
+
+   valid_x_and_y:
+        
+   
+    mov edi, MAP_WIDTH
+    imul edi, ecx
+    add edi, ebx
+
+    cmp esi, 0
+    je clear_map
+        ; flag
+    jmp continue_game_loop
+    clear_map:
+        cmp [field + edi], FIELD_MINE
+        je dead
+        ; Check if there's not a flag here
+        mov [interactive + edi], INTER_DISCOVERED
+        call seed_and_grow_clear
+        jmp continue_game_loop
+        dead:
+            mov edx, OFFSET you_died
+            call WriteString
+            call CrLf
+            jmp exit_label
+        
+
+   continue_game_loop: 
+    mov edi, [flagged_mines]
+    cmp edi, [num_mines]
+    jl game_loop
+
+    
+        
 
 
-; Clobbers: eax, edi, edx
-; Operation: rng += 1103515245 * rng
-; Notes:
-;   eax is set to the value of RNG.
-; https://stackoverflow.com/questions/3062746/special-simple-random-number-generator#3062783
-advance_rng:
-    mov edi, 1103515245
-    mov eax, [rng]
-    mul edi
-    add eax, 12345
-    mov [rng], eax
-    ret
+
+
+
+
 
 ; x = ebx, y = ecx
 ; Set EFLAGS so that jl jumps any of the following are unsatisfied
@@ -82,6 +156,7 @@ bounds_check:
 
 ; Clobbers: eax, edi
 place_mine_at_xy:
+    inc [num_mines]
     ; eax = (ecx * MAP_WIDTH) + ebx
     mov eax, MAP_WIDTH
     mul ecx
@@ -138,12 +213,13 @@ place_mine_at_xy:
 
 ; Generates a new map
 generate_map:
-    call Randomize
+    mov [num_mines], 0
+    ;call Randomize
     ; Clear both of the arrays 
     mov ecx, MAP_WIDTH * MAP_HEIGHT
     gm_clear_loop:
         mov [field + ecx], FIELD_CLEAR
-        mov [interactive + ecx], INTER_DISCOVERED
+        mov [interactive + ecx], INTER_UNDISCOVERED
         loop gm_clear_loop
     
     
@@ -335,8 +411,8 @@ print_map:
 
   
 
-
-exit
+exit_label:
+    exit
 
 main ENDP
 
