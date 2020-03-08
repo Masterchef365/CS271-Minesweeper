@@ -11,7 +11,7 @@ INCLUDE Irvine32.inc
 ; Configurable constants
     ; MAP_WIDTH and height of the map
     MAP_WIDTH = 16
-    HEIGHT = 16
+    MAP_HEIGHT = 16
     PERCENT_MINES = 10
 
 ; Internal constants
@@ -20,19 +20,19 @@ INCLUDE Irvine32.inc
     FIELD_MINE = 9
 
     ; Interactive map codes
-    INTER_UNDISCOVERED equ 0
-    INTER_DISCOVERED equ 1
-    INTER_FLAGGED equ 2
+    INTER_UNDISCOVERED = 0
+    INTER_DISCOVERED = 1
+    INTER_FLAGGED = 2
 
     ; Display characters
-    UNDISCOVERED_CHAR equ '-'
-    FLAG_CHAR equ 'F'
-    CLEAR_CHAR equ ' '
-    MINE_CHAR equ '*'
+    UNDISCOVERED_CHAR = '-'
+    FLAG_CHAR = 'F'
+    CLEAR_CHAR = ' '
+    MINE_CHAR = '*'
 
     ; Kernel lengths
-    FULL_AREA_KERNEL_LEN equ 8
-    ADJACENT_KERNEL_LEN equ 4
+    FULL_AREA_KERNEL_LEN = 8
+    ADJACENT_KERNEL_LEN = 4
 .data
 ; Internal variables
     rng dd 15
@@ -40,8 +40,8 @@ INCLUDE Irvine32.inc
     full_area_kernel_y dd -1, -1, -1, 0, 0, 1, 1, 1
     adjacent_kernel_x dd -1, 0, 0, 1
     adjacent_kernel_y dd 0, -1, 1, 0
-    field BYTE (MAP_WIDTH * HEIGHT) DUP(0)
-    interactive BYTE (MAP_WIDTH * HEIGHT) DUP(0)
+    field BYTE (MAP_WIDTH * MAP_HEIGHT) DUP(0)
+    interactive BYTE (MAP_WIDTH * MAP_HEIGHT) DUP(0)
 
 .code
 main PROC
@@ -65,7 +65,7 @@ advance_rng:
 
 ; x = ebx, y = ecx
 ; Set EFLAGS so that jl jumps any of the following are unsatisfied
-;   x >= 0 && y >= 0 && MAP_WIDTH - 1 >= x && HEIGHT - 1 >= y;
+;   x >= 0 && y >= 0 && MAP_WIDTH - 1 >= x && MAP_HEIGHT - 1 >= y;
 ; Clobbers: eax
 bounds_check:
     cmp ebx, 0
@@ -75,7 +75,7 @@ bounds_check:
     mov eax, MAP_WIDTH - 1
     cmp eax, ebx
     jl bounds_check_break  
-    mov eax, HEIGHT - 1
+    mov eax, MAP_HEIGHT - 1
     cmp eax, ecx
     bounds_check_break:
     ret
@@ -139,11 +139,10 @@ place_mine_at_xy:
 ; Generates a new map
 generate_map:
     ; Clear both of the arrays 
-    mov ecx, MAP_WIDTH * HEIGHT
+    mov ecx, MAP_WIDTH * MAP_HEIGHT
     gm_clear_loop:
-        mov bl, 0
-        mov [field + ecx], bl
-        mov [interactive + ecx], bl
+        mov byte [field + ecx], FIELD_CLEAR
+        mov byte [interactive + ecx], INTER_UNDISCOVERED
         loop gm_clear_loop
     
     
@@ -181,10 +180,61 @@ generate_map:
         cmp ebx, MAP_WIDTH
         jl gm_x_loop
 
-    ; if (++y > HEIGHT) break;
+    ; if (++y > MAP_HEIGHT) break;
     add ecx, 1
-    cmp ecx, HEIGHT
+    cmp ecx, MAP_HEIGHT
     jl gm_y_loop
+    ret
+
+seed_and_grow_clear:
+    ; Save last position into the stack
+    mov edi, 0
+    seed_and_grow_adj_loop:
+        push ebx
+        push ecx
+        push edi
+
+        ; x, y += kernel[i]
+        add ebx, [adjacent_kernel_x + edi*4]
+        add ecx, [adjacent_kernel_y + edi*4]
+
+        ; Bounds check
+        call bounds_check
+        jl seed_and_grow_continue
+
+        ; position (eax) = y * WIDTH + x
+        mov eax, WIDTH
+        mul ecx
+        add eax, ebx
+
+        ; If the area is not undiscovered (is discovered/flagged), don't discover it
+        cmp byte [interactive + eax], INTER_UNDISCOVERED
+        jne seed_and_grow_continue
+
+        ; If the area is a mine, continue loop
+        mov dl, byte [field + eax]
+        cmp dl, FIELD_MINE
+        je seed_and_grow_continue
+
+        ; "Discover" current location
+        mov byte [interactive + eax], INTER_DISCOVERED
+
+        ; If the area is not clear, don't seed-and-grow here
+        cmp dl, FIELD_CLEAR
+        jne seed_and_grow_continue
+
+        call seed_and_grow_clear
+        
+        seed_and_grow_continue:
+
+        pop edi
+        pop ecx
+        pop ebx
+
+    add edi, 1
+    cmp edi, ADJACENT_KERNEL_LEN
+    jl seed_and_grow_adj_loop
+
     ret
 
 write_short_hex:
@@ -229,49 +279,34 @@ print_map:
 
         mov ebx, 0 ; X coord
         print_x_loop:
-            
-            
             ; eax = (ecx * MAP_WIDTH) + ebx
             mov edi, MAP_WIDTH
             imul edi, ecx
             add edi, ebx
-      
-            ; writes out space and then field
-            ;mov al, ' '
-            ;call WriteChar
-            ;mov al, [field + edi]
-            ;call WriteDec
-            
-            ; check interactive map for 0 or 2
-            mov al, [interactive + edi]
-            cmp al, INTER_UNDISCOVERED
-            je print_dash
-            cmp al, INTER_FLAGGED
-            je F_in_the_chat
 
             ; case where its not 0 or 2
             mov al, [field + edi]
-            cmp al, 9
+            cmp al, FIELD_MINE
             je print_asterisk
-            cmp al, 0
+            cmp al, FIELD_CLEAR
             je print_space
             add al, '0'
             call im_done
 
             print_space:
-            mov eax, ' '
+            mov eax, CLEAR_CHAR
             jmp im_done
 
             print_dash:
-            mov eax, '-'
+            mov eax, UNDISCOVERED_CHAR
             jmp im_done
 
             F_in_the_chat:
-            mov eax, 'F'
+            mov eax, FLAG_CHAR
             jmp im_done
 
             print_asterisk:
-            mov eax, '*'
+            mov eax, MINE_CHAR
             jmp im_done
 
             im_done:
@@ -288,9 +323,9 @@ print_map:
     ; Write a newline
     call Crlf
 
-    ; if (++y > HEIGHT) break;
+    ; if (++y > MAP_HEIGHT) break;
     add ecx, 1
-    cmp ecx, HEIGHT
+    cmp ecx, MAP_HEIGHT
     jl print_y_loop
 
     ret
