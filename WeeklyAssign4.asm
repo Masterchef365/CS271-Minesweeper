@@ -47,6 +47,9 @@ INCLUDE Irvine32.inc
 main PROC
 
 call generate_map
+mov ebx, 4
+mov ecx, 5
+call seed_and_grow_clear
 call print_map
 
 
@@ -141,8 +144,8 @@ generate_map:
     ; Clear both of the arrays 
     mov ecx, MAP_WIDTH * MAP_HEIGHT
     gm_clear_loop:
-        mov byte [field + ecx], FIELD_CLEAR
-        mov byte [interactive + ecx], INTER_UNDISCOVERED
+        mov [field + ecx], FIELD_CLEAR
+        mov [interactive + ecx], INTER_UNDISCOVERED
         loop gm_clear_loop
     
     
@@ -203,21 +206,21 @@ seed_and_grow_clear:
         jl seed_and_grow_continue
 
         ; position (eax) = y * WIDTH + x
-        mov eax, WIDTH
+        mov eax, MAP_WIDTH
         mul ecx
         add eax, ebx
 
         ; If the area is not undiscovered (is discovered/flagged), don't discover it
-        cmp byte [interactive + eax], INTER_UNDISCOVERED
+        cmp [interactive + eax], INTER_UNDISCOVERED
         jne seed_and_grow_continue
 
         ; If the area is a mine, continue loop
-        mov dl, byte [field + eax]
+        mov dl, [field + eax]
         cmp dl, FIELD_MINE
         je seed_and_grow_continue
 
         ; "Discover" current location
-        mov byte [interactive + eax], INTER_DISCOVERED
+        mov [interactive + eax], INTER_DISCOVERED
 
         ; If the area is not clear, don't seed-and-grow here
         cmp dl, FIELD_CLEAR
@@ -283,6 +286,13 @@ print_map:
             mov edi, MAP_WIDTH
             imul edi, ecx
             add edi, ebx
+
+            ; check interactive map for 0 or 2
+            mov al, [interactive + edi]
+            cmp al, INTER_UNDISCOVERED
+            je print_dash
+            cmp al, INTER_FLAGGED
+            je F_in_the_chat
 
             ; case where its not 0 or 2
             mov al, [field + edi]
