@@ -1,5 +1,8 @@
 INCLUDE Irvine32.inc
 
+; Known issues:
+; 1. Player could flag every cell as a mine and win, as they would have actually correctly flagged all mines.
+
 ; Calling convention:
 ; SUITABLE FOR CALLING: ebx, ecx, esi
 ; OFTEN CLOBBERED: eax, edi, edx (ReadInt, and WriteString, div op)
@@ -48,8 +51,8 @@ INCLUDE Irvine32.inc
     prompt_command_options  BYTE "0 = clear, 1 = toggle flag", 0
     ask_x                   BYTE "Enter X coordinate: ", 0
     ask_y                   BYTE "Enter Y coordinate: ", 0
-    you_died                BYTE "You lost nerd", 0
-    you_won                 BYTE "You won who cares", 0
+    you_died                BYTE "You lost!", 0
+    you_won                 BYTE "You won!", 0
     out_of_bounds           BYTE "Entered numbers were not in bounds", 0
 
 ; integer variables
@@ -63,6 +66,7 @@ main PROC
 call generate_map
 game_loop:
     call print_map
+    ; Write the user command (0 or 1) into esi
     prompt_command_loop:
         mov edx, OFFSET prompt_command
         call WriteString
@@ -75,47 +79,51 @@ game_loop:
         jg prompt_command_loop
         cmp eax, 0
         jl prompt_command_loop
-
     mov esi, eax
  
-
-      get_x_and_y:
-        mov edx, OFFSET ask_x
-        call WriteString
-        call CrLf
-        call ReadHex
-        mov ebx, eax
-        mov edx, OFFSET ask_y
-        call WriteString
-        call CrLf
-        call ReadHex
-        mov ecx, eax
-        call bounds_check
-        jge valid_x_and_y
-        ; Print error
-        mov edx, OFFSET out_of_bounds
-        call WriteString
-        call CrLf
-        jmp get_x_and_y
+    ; Prompt for X and Y coordinates, storing them in ebx and ecx respectively.
+    ; Validate data and loop if out of bounds.
+    get_x_and_y:
+      mov edx, OFFSET ask_x
+      call WriteString
+      call CrLf
+      call ReadHex
+      mov ebx, eax
+      mov edx, OFFSET ask_y
+      call WriteString
+      call CrLf
+      call ReadHex
+      mov ecx, eax
+      call bounds_check
+      jge valid_x_and_y
+      ; Print error
+      mov edx, OFFSET out_of_bounds
+      call WriteString
+      call CrLf
+      jmp get_x_and_y
 
    valid_x_and_y:
         
-   
+    ; Calculate array index within map
     mov edi, MAP_WIDTH
     imul edi, ecx
     add edi, ebx
 
+    ; Decide what to do based on the command given
     cmp esi, 0
     je clear_map
+
         ; Toogle flag for this area
         cmp [interactive + edi], INTER_FLAGGED
         je is_flagged
+            ; If the area isn't flagged
             mov [interactive + edi], INTER_FLAGGED          ; change the space to the code for a flag
             cmp [field + edi], FIELD_MINE                   ; check if they flagged a mine
             jne continue_game_loop
                 inc [flagged_mines]
             jmp continue_game_loop
         is_flagged:
+            ; If the area is flagged
             mov [interactive + edi], INTER_UNDISCOVERED
             cmp [field + edi], FIELD_MINE
             jne continue_game_loop
@@ -124,28 +132,32 @@ game_loop:
 
     clear_map:
         ; Clear this area
+
+        ; Check if there's a mine in this spot. If so, display death message and exit.
         cmp [field + edi], FIELD_MINE
         je dead
-        ; Check if there's not a flag here
-        mov [interactive + edi], INTER_DISCOVERED
-        call seed_and_grow_clear
-        jmp continue_game_loop
+            ; Not dead, clear that spot and run seed-and-grow.
+            mov [interactive + edi], INTER_DISCOVERED
+            call seed_and_grow_clear
+            jmp continue_game_loop
         dead:
+            ; Display death and exit
             mov edx, OFFSET you_died
             call WriteString
             call CrLf
             jmp exit_label
         
 
-   continue_game_loop: 
+    ; Check if the player has flagged all of the mines.
+    continue_game_loop: 
     mov edi, [flagged_mines]
     cmp edi, [num_mines]
     jl game_loop
 
+    ; Fell through the loop, they Won!
     mov edx, OFFSET you_won
     call WriteString
     call CrLf
-
 
 
 ; x = ebx, y = ecx
@@ -224,9 +236,11 @@ place_mine_at_xy:
 
 ; Generates a new map
 generate_map:
+    ; Make sure this map is unique
+    call Randomize
+
+    ; Reset the map
     mov [num_mines], 0
-    ;call Randomize
-    ; Clear both of the arrays 
     mov ecx, MAP_WIDTH * MAP_HEIGHT
     gm_clear_loop:
         mov [field + ecx], FIELD_CLEAR
@@ -269,6 +283,10 @@ generate_map:
     jl gm_y_loop
     ret
 
+; Clear an area in the map by using the recursive 
+; seed-and-grow algorithm for adjacent cells.
+; Inputs: X = ebx, Y = ecx
+; Preconditions: Assumes ebx, ecx are in bounds
 seed_and_grow_clear:
     ; Save last position into the stack
     mov edi, 0
@@ -320,6 +338,7 @@ seed_and_grow_clear:
 
     ret
 
+; Write eax as a single-digit hexadecimal number
 write_short_hex:
     cmp eax, 10
     jl write_short_hex_int
@@ -334,6 +353,7 @@ write_short_hex:
 
 ; Prints the current map
 print_map:
+    ; Write top X coordinate row
     mov ecx, 0
     mov eax, '-'
     call WriteChar
@@ -351,6 +371,7 @@ print_map:
     call CrLf
     call CrLf
 
+    ; Draw the entire map
     mov ecx, 0 ; Y coord
     print_y_loop:
         ; write numbers along the side
@@ -419,8 +440,6 @@ print_map:
     jl print_y_loop
 
     ret
-
-  
 
 exit_label:
     exit
