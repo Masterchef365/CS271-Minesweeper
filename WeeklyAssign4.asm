@@ -218,7 +218,7 @@ place_mine_at_xy:
         je pm_area_loop_continue
 
         ; dl += 1
-        add dl, 1
+        inc dl
 
         ; field[eax] = dl
         mov [field + eax], dl
@@ -227,9 +227,9 @@ place_mine_at_xy:
         pop ecx
         pop ebx
 
-     add edi, 1
-     cmp edi, FULL_AREA_KERNEL_LEN
-     jl pm_area_loop
+    inc edi
+    cmp edi, FULL_AREA_KERNEL_LEN
+    jl pm_area_loop
 
     ret
 
@@ -273,12 +273,12 @@ generate_map:
             gm_clear:
 
         ; if (++x > MAP_WIDTH) break;
-        add ebx, 1
+        inc ebx
         cmp ebx, MAP_WIDTH
         jl gm_x_loop
 
     ; if (++y > MAP_HEIGHT) break;
-    add ecx, 1
+    inc ecx
     cmp ecx, MAP_HEIGHT
     jl gm_y_loop
     ret
@@ -402,7 +402,7 @@ print_map:
             cmp al, FIELD_CLEAR
             je print_space
             add al, '0'
-            call im_done
+            jmp im_done
 
             print_space:
             mov eax, CLEAR_CHAR
@@ -427,15 +427,14 @@ print_map:
 
 
         ; if (++x > MAP_WIDTH) break;
-        add ebx, 1
+        inc ebx
         cmp ebx, MAP_WIDTH
         jl print_x_loop
 
-    ; Write a newline
     call Crlf
 
     ; if (++y > MAP_HEIGHT) break;
-    add ecx, 1
+    inc ecx
     cmp ecx, MAP_HEIGHT
     jl print_y_loop
 
